@@ -1,15 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import { Todo } from '@/types/todo';
 
-// Hardcode langsung - ganti dengan credentials Anda
-const supabaseUrl = 'https://pueaeklmjyebplutvyvz.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1ZWFla2xtanllYnBsdXR2eXZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNTA2ODUsImV4cCI6MjA5MDYyNjY4NX0.gq8gAtDS4dRfjsULo15TLvC4ZL6c-N3cg2aTFzC-0-8';
+// Gunakan environment variables dengan fallback untuk development
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://pueaeklmjyebplutvyvz.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1ZWFla2xtanllYnBsdXR2eXZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNTA2ODUsImV4cCI6MjA5MDYyNjY4NX0.gq8gAtDS4dRfjsULo15TLvC4ZL6c-N3cg2aTFzC-0-8';
 
-// Debug
-console.log('🔧 Supabase Config:', {
-  url: supabaseUrl,
-  keyLength: supabaseAnonKey.length
-});
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables');
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
