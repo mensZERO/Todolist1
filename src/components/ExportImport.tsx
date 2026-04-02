@@ -1,6 +1,7 @@
 'use client';
 
-import { Download, Upload, FileSpreadsheet } from 'lucide-react';
+import { useState } from 'react';
+import { Download, Upload, FileSpreadsheet, ChevronDown } from 'lucide-react';
 import { Todo } from '@/types/todo';
 
 interface ExportImportProps {
@@ -8,24 +9,47 @@ interface ExportImportProps {
   onImport: (todos: Todo[]) => void;
 }
 
+type ExportFilter = 'all' | 'completed' | 'active' | 'overdue';
+
 export default function ExportImport({ todos, onImport }: ExportImportProps) {
-  const handleExportJSON = () => {
-    const dataStr = JSON.stringify(todos, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `todos-backup-${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+
+  const filterTodos = (filter: ExportFilter): Todo[] => {
+    switch (filter) {
+      case 'completed':
+        return todos.filter(t => t.completed);
+      case 'active':
+        return todos.filter(t => !t.completed);
+      case 'overdue':
+        return todos.filter(t => t.due_date && !t.completed && new Date(t.due_date) < new Date());
+      case 'all':
+      default:
+        return todos;
+    }
   };
 
-  const handleExportExcel = () => {
+  const getFilterLabel = (filter: ExportFilter): string => {
+    switch (filter) {
+      case 'completed': return 'Selesai';
+      case 'active': return 'Aktif';
+      case 'overdue': return 'Terlambat';
+      case 'all': return 'Semua';
+    }
+  };
+
+  const handleExportExcel = (filter: ExportFilter) => {
+    const filteredTodos = filterTodos(filter);
+    
+    if (filteredTodos.length === 0) {
+      alert('Tidak ada tugas untuk di-export!');
+      return;
+    }
+
     // Header CSV
     const headers = ['Judul', 'Status', 'Prioritas', 'Kategori', 'Deadline', 'Dibuat', 'Diupdate'];
     
     // Convert todos ke rows
-    const rows = todos.map(todo => [
+    const rows = filteredTodos.map(todo => [
       todo.title,
       todo.completed ? 'Selesai' : 'Aktif',
       todo.priority.toUpperCase(),
@@ -47,7 +71,19 @@ export default function ExportImport({ todos, onImport }: ExportImportProps) {
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `todos-${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `todos-${getFilterLabel(filter).toLowerCase()}-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setShowExportMenu(false);
+  };
+
+  const handleExportJSON = () => {
+    const dataStr = JSON.stringify(todos, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `todos-backup-${new Date().toISOString().split('T')[0]}.json`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -75,16 +111,52 @@ export default function ExportImport({ todos, onImport }: ExportImportProps) {
   };
 
   return (
-    <div className="flex gap-2 flex-wrap">
-      <button
-        onClick={handleExportExcel}
-        className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm"
-        title="Export ke Excel (CSV)"
-      >
-        <FileSpreadsheet size={16} />
-        <span className="hidden sm:inline">Excel</span>
-      </button>
+    <div className="flex gap-2 flex-wrap relative">
+      {/* Excel Export with Dropdown */}
+      <div className="relative">
+        <button
+          onClick={() => setShowExportMenu(!showExportMenu)}
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm"
+          title="Export ke Excel (CSV)"
+        >
+          <FileSpreadsheet size={16} />
+          <span className="hidden sm:inline">Excel</span>
+          <ChevronDown size={14} />
+        </button>
 
+        {showExportMenu && (
+          <>
+            <div 
+              className="fixed inset-0 z-10" 
+              onClick={() => setShowExportMenu(false)}
+            />
+            <div className="absolute top-full mt-2 left-0 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 min-w-[180px] z-20">
+              <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+                Export Excel
+              </div>
+              {(['all', 'active', 'completed', 'overdue'] as ExportFilter[]).map((filter) => {
+                const count = filterTodos(filter).length;
+                return (
+                  <button
+                    key={filter}
+                    onClick={() => handleExportExcel(filter)}
+                    className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-between"
+                  >
+                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                      {getFilterLabel(filter)}
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      ({count})
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* JSON Export */}
       <button
         onClick={handleExportJSON}
         className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
@@ -94,6 +166,7 @@ export default function ExportImport({ todos, onImport }: ExportImportProps) {
         <span className="hidden sm:inline">JSON</span>
       </button>
       
+      {/* Import */}
       <label className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors cursor-pointer text-sm">
         <Upload size={16} />
         <span className="hidden sm:inline">Import</span>
